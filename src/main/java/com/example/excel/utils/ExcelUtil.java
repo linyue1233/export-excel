@@ -1,20 +1,21 @@
 package com.example.excel.utils;
 
 import com.alibaba.excel.EasyExcelFactory;
+import com.alibaba.excel.ExcelWriter;
 import com.alibaba.excel.context.AnalysisContext;
 import com.alibaba.excel.event.AnalysisEventListener;
+import com.alibaba.excel.metadata.BaseRowModel;
 import com.alibaba.excel.metadata.Sheet;
+import com.alibaba.excel.util.CollectionUtils;
 import com.alibaba.excel.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Workbook;
 
 import javax.servlet.http.HttpServletResponse;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -112,8 +113,8 @@ public class ExcelUtil {
      * generate excel
      *
      * @param filePath absolute path
-     * @param data data source
-     * @param head table head
+     * @param data     data source
+     * @param head     table head
      */
     public static void writeBySimple(String filePath, List<List<Object>> data, List<String> head) {
         writeBySimple(filePath, data, head, null);
@@ -121,8 +122,74 @@ public class ExcelUtil {
 
     public static void writeBySimple(String filePath, List<List<Object>> data, List<String> head, Sheet sheet) {
         sheet = sheet != null ? sheet : initSheet;
-
+        if (head != null) {
+            List<List<String>> list = new ArrayList<>();
+            head.forEach(h -> list.add(Collections.singletonList(h)));
+            sheet.setHead(list);
+        }
+        OutputStream outputStream = null;
+        ExcelWriter writer = null;
+        try {
+            outputStream = new FileOutputStream(filePath);
+            writer = EasyExcelFactory.getWriter(outputStream);
+            writer.write1(data, sheet);
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e.getMessage());
+        } finally {
+            try {
+                if (writer != null) {
+                    writer.finish();
+                }
+                if (outputStream != null) {
+                    outputStream.close();
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e.getMessage());
+            }
+        }
     }
+
+
+    /**
+     * generate excel
+     *
+     * @param filePath absolute path
+     * @param data     data source
+     */
+    public static void writeWithTemplate(String filePath, List<? extends BaseRowModel> data) {
+        writeWithTemplateAndSheet(filePath, data, null);
+    }
+
+    public static void writeWithTemplateAndSheet(String filePath, List<? extends BaseRowModel> data, Sheet sheet) {
+        if (!CollectionUtils.isEmpty(data)) {
+            return;
+        }
+        sheet = sheet != null ? sheet : initSheet;
+        sheet.setClazz(data.get(0).getClass());
+        OutputStream outputStream = null;
+        ExcelWriter writer = null;
+        try {
+            outputStream = new FileOutputStream(filePath);
+            writer = EasyExcelFactory.getWriter(outputStream);
+            writer.write(data, sheet);
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e.getMessage());
+        } finally {
+            try{
+                if (writer != null){
+                    writer.finish();
+                }
+                if(outputStream != null){
+                    outputStream.close();
+                }
+            }catch (IOException e){
+                throw new RuntimeException(e.getMessage());
+            }
+        }
+    }
+
+
+
 
     /**
      * each time analyse a row will use invoke
